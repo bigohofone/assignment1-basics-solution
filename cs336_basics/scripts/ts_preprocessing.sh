@@ -11,5 +11,5 @@ python -m cs336_basics.solutions._preprocessing \
     --vocab_path ./out/ts_train/tokenizer/vocab.pkl \
     --merges_path ./out/ts_train/tokenizer/merges.pkl \
     --input_path ./data/TinyStoriesV2-GPT4-train.txt \
-    --output_path ./data/ts_train/data.npy \
+    --output_path ./out/ts_train/data.npy \
     --n_proc 8

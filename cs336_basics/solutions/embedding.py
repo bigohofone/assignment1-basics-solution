@@ -24,5 +24,5 @@ class Embedding(nn.Module):
         )
 
     def forward(self, token_ids: torch.Tensor) -> torch.Tensor:
-        one_hot = torch.nn.functional.one_hot(token_ids, num_classes=self.num_embeddings).float()
+        one_hot = torch.nn.functional.one_hot(token_ids.long(), num_classes=self.num_embeddings).float()
         return torch.einsum('bsv,vd->bsd', one_hot, self.weight)

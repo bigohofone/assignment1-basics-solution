@@ -28,6 +28,7 @@ class TransformerLM(nn.Module):
         ffn_type: Literal["silu", "swiglu"] | None = None
     ):
         super().__init__()
+        self.context_length = context_length
         self.token_embeddings = Embedding(vocab_size, d_model, device=device, dtype=dtype)
         self.layers = nn.ModuleList([
             TrasformerBlock(d_model, num_heads, d_ff, context_length, rope_theta, device=device, dtype=dtype, 

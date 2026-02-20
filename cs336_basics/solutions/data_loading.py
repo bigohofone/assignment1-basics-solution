@@ -19,8 +19,8 @@ def get_batch(
     offsets = np.arange(context_length)
     indices = idx[:, None] + offsets
     
-    x_batch = torch.from_numpy(dataset[indices])
-    y_batch = torch.from_numpy(dataset[indices + 1])
+    x_batch = torch.from_numpy(dataset[indices]).long()
+    y_batch = torch.from_numpy(dataset[indices + 1]).long()
     
     if device.startswith("cuda"):
         return (x_batch.pin_memory().to(device, non_blocking=True), 

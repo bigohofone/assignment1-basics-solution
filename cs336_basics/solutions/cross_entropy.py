@@ -10,7 +10,9 @@ class CrossEntropyLoss(nn.Module):
         super().__init__()
         self.z = z
     
-    @torch.compile
+    # Ignore the @torch.compile decorator if you are using PyTorch 2.0 or below. It is only for PyTorch 2.1 and above.
+    # My GPU is TOOOOO old...
+    # @torch.compile 
     def forward(
         self,
         inputs: Float[Tensor, " batch_size vocab_size"], 
