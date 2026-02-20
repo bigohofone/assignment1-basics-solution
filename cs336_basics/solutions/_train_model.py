@@ -9,6 +9,7 @@ import wandb
 import torch
 import yaml
 from tqdm import tqdm
+from collections.abc import Mapping
 
 from cs336_basics.solutions.transformer_lm import TransformerLM
 from cs336_basics.solutions.adamw import AdamW
@@ -40,6 +41,15 @@ def seed_everything(seed: int = 42):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
+def deep_update(source, overrides):
+    for key, value in overrides.items():
+        if isinstance(value, Mapping) and value:
+            returned = deep_update(source.get(key, {}), value)
+            source[key] = returned
+        else:
+            source[key] = overrides[key]
+    return source
+
 
 parser = argparse.ArgumentParser()
 parser = deepspeed.add_config_arguments(parser)
@@ -55,9 +65,9 @@ with open(args.base_config_path, 'r') as f:
 
 for update_path in args.update_config_path or []:
     with open(update_path, 'r') as f:
-        update = yaml.safe_load(f)
-        for key, value in update.items():
-            config[key] = value
+        update_data = yaml.safe_load(f)
+        if update_data:
+            config = deep_update(config, update_data)
             
 if args.test:
     config['training']['total_iters'] = 10

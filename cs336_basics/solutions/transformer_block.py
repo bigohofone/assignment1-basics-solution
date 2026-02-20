@@ -31,9 +31,8 @@ class TrasformerBlock(nn.Module):
             device=device, dtype=dtype
         )
         
-        norm_type = RMSNorm if not remove_rmsnorm else nn.Identity
-        self.ln1 = norm_type(d_model, device=device, dtype=dtype) 
-        self.ln2 = norm_type(d_model, device=device, dtype=dtype) 
+        self.ln1 = RMSNorm(d_model, device=device, dtype=dtype) if not remove_rmsnorm else nn.Identity()
+        self.ln2 = RMSNorm(d_model, device=device, dtype=dtype) if not remove_rmsnorm else nn.Identity()
         
         ffn_type = SiLU if ffn_type=='silu' else SwiGLU
         self.ffn = ffn_type(

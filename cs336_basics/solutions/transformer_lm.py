@@ -35,7 +35,7 @@ class TransformerLM(nn.Module):
                             remove_rmsnorm=remove_rmsnorm, use_post_norm=use_post_norm, remove_rope=remove_rope, ffn_type=ffn_type)
             for _ in range(num_layers)            
         ])
-        self.ln_final = RMSNorm(d_model, device=device, dtype=dtype) if not remove_rmsnorm else lambda x: x
+        self.ln_final = RMSNorm(d_model, device=device, dtype=dtype) if not remove_rmsnorm else nn.Identity()
         self.lm_head = Linear(d_model, vocab_size, device=device, dtype=dtype)
         
     def forward(
