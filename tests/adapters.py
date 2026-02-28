@@ -312,7 +312,7 @@ def run_transformer_block(
         running the Transformer block on the input features while using RoPE.
     """
     from cs336_basics.solutions.transformer_block import TrasformerBlock
-    from cs336_basics.solutions.utils import fuse_qkv_state_dict
+    from cs336_basics.solutions._utils import fuse_qkv_state_dict
     
     block = TrasformerBlock(d_model, num_heads, d_ff, max_seq_len, theta)
     state_dict = fuse_qkv_state_dict(weights)
@@ -401,7 +401,7 @@ def run_transformer_lm(
         next-word distribution for each token.
     """
     from cs336_basics.solutions.transformer_lm import TransformerLM
-    from cs336_basics.solutions.utils import fuse_qkv_state_dict
+    from cs336_basics.solutions._utils import fuse_qkv_state_dict
     
     lm = TransformerLM(d_model, num_heads, d_ff, vocab_size, context_length, num_layers, rope_theta)
     state_dict = fuse_qkv_state_dict(weights)

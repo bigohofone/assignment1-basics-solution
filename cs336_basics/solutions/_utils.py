@@ -1,4 +1,47 @@
+import os
+import glob
+import random
+import numpy as np
+import deepspeed
 import torch
+
+
+def load_dataset(dataset_dir):
+    pattern = os.path.join(dataset_dir, "*.npy")
+    files = sorted(glob.glob(pattern))
+    if not files:
+        raise FileNotFoundError(f"No shard_w*.npy files found in {dataset_dir}")
+    
+    arrays = [np.load(f) for f in files]
+    full_dataset = np.concatenate(arrays)
+    return full_dataset
+
+
+def seed_everything(seed: int = 42):
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    # torch.backends.cudnn.deterministic = True
+    # torch.backends.cudnn.benchmark = False
+
+
+def setup_dist(config):
+    local_rank = int(os.environ.get("LOCAL_RANK", 0))
+    
+    torch.cuda.set_device(local_rank)
+    deepspeed.init_distributed()
+    
+    wsz = deepspeed.comm.get_world_size()
+    rank = deepspeed.comm.get_rank()
+    
+    seed = config.training.get('seed', 42) + rank
+    seed_everything(seed)
+    
+    return rank, wsz
+
 
 def fuse_qkv_state_dict(state_dict):
     new_state_dict = state_dict.copy()

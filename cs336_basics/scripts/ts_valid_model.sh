@@ -1,6 +1,6 @@
 base_bsz=128
 
-bsz=32
+bsz=64
 lr=0.0005
 
 _lr=$(python -c "import math; print(round($lr * math.sqrt($bsz / $base_bsz), 6))")

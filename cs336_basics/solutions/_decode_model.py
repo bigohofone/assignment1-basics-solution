@@ -1,96 +1,48 @@
-import torch
-import torch.nn.functional as F
-from cs336_basics.solutions.tokenizer import Tokenizer
-from cs336_basics.solutions.transformer_lm import TransformerLM
-from cs336_basics.solutions.decoding import decode
 import os
 import json
+import yaml
 import glob
 import random
 import argparse
 import numpy as np
-import deepspeed
-import wandb
 import torch
-import yaml
-from tqdm import tqdm
-from collections.abc import Mapping
+import torch.nn.functional as F
 
+from cs336_basics.solutions.tokenizer import Tokenizer
 from cs336_basics.solutions.transformer_lm import TransformerLM
-from cs336_basics.solutions.adamw import AdamW
-from cs336_basics.solutions.cross_entropy import CrossEntropyLoss
-from cs336_basics.solutions.learning_rate_schedule import get_lr_cosine_schedule
-from cs336_basics.solutions.gradient_clipping import clip_grad_norm_
-from cs336_basics.solutions.data_loading import get_batch
-
-
-def load_dataset(dataset_dir):
-    pattern = os.path.join(dataset_dir, "*.npy")
-    files = sorted(glob.glob(pattern))
-    if not files:
-        raise FileNotFoundError(f"No shard_w*.npy files found in {dataset_dir}")
-    
-    arrays = [np.load(f) for f in files]
-    full_dataset = np.concatenate(arrays)
-    return full_dataset
-
-def seed_everything(seed: int = 42):
-    random.seed(seed)
-    os.environ['PYTHONHASHSEED'] = str(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    # torch.backends.cudnn.deterministic = True
-    # torch.backends.cudnn.benchmark = False
-
-def deep_update(source, overrides):
-    for key, value in overrides.items():
-        if isinstance(value, Mapping) and value:
-            returned = deep_update(source.get(key, {}), value)
-            source[key] = returned
-        else:
-            source[key] = overrides[key]
-    return source
+from cs336_basics.solutions.decoding import decode
 
 
 parser = argparse.ArgumentParser()
-parser = deepspeed.add_config_arguments(parser)
-parser.add_argument("--local_rank", type=int, default=-1, help="Local rank passed by deepspeed launcher")
-parser.add_argument("--config_path", type=str, help="Path to the YAML configuration file")
+parser.add_argument("--run_name", type=str, required=True)
+parser.add_argument("--input_text", type=str, required=True)
+parser.add_argument("--ckpt_dir", type=str, default='./checkpoints')
+parser.add_argument("--ckpt_tag", type=str, default='final')
 args = parser.parse_args()
 
-ckpt_dir = '/home/aikusrv02/_PROJECTS/wonjunoh/assignment1-basics-solution/checkpoints/best'
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+ckpt_dir = os.path.join(args.ckpt_dir, args.run_name)
+ckpt_path = os.path.join(ckpt_dir, args.ckpt_tag, "mp_rank_00_model_states.pt")
 
-with open(args.config_path, 'r') as f:
-    config = yaml.safe_load(f)
+with open(os.path.join(ckpt_dir, 'model.yaml'), 'r') as f:
+    model_config = yaml.safe_load(f)
     
-torch.cuda.set_device(args.local_rank)
-deepspeed.init_distributed()
-rank = deepspeed.comm.get_rank()
-seed_everything(42 + rank)
+model = TransformerLM(**model_config)
+checkpoint = torch.load(ckpt_path, map_location=device)
+model.load_state_dict(checkpoint['module'])
+model.eval()
+
+with open(os.path.join(ckpt_dir, 'tokenizer.yaml'), 'r') as f:
+    tokenizer_config = yaml.safe_load(f)
     
-model = TransformerLM(**config['model'])
-
-validation_config = config['deepspeed'].copy()
-validation_config["zero_optimization"]["stage"] = 0
-
-model_engine, _, _, _ = deepspeed.initialize(
-    args=args,
-    model=model,
-    optimizer=None,
-    config=validation_config
+tokenizer = Tokenizer.from_files(
+    vocab_path=os.path.join(ckpt_dir, 'vocab.pkl'), 
+    merges_path=os.path.join(ckpt_dir, 'merges.pkl'), 
+    **tokenizer_config
 )
-load_path, _ = model_engine.load_checkpoint(config['paths']['ckpt_dir'], tag="final")
-if load_path is None:
-    raise ValueError(f"체크포인트를 로드하지 못했습니다: {config['paths']['ckpt_dir']}의 'final' 태그를 확인하세요.")
-
-model_engine.eval()
-
-tokenizer = Tokenizer.from_files(config['paths']['vocab_path'], config['paths']['merges_path'], **config['tokenizer'])
 
 prompt = "Once upon a time"
-generated_text = decode(model_engine, tokenizer, prompt)
-print("Generated Text:")
-print(generated_text)
+generated_text = decode(model, tokenizer, prompt, max_new_tokens=128)
+
+print(f"{prompt} -> {generated_text}")

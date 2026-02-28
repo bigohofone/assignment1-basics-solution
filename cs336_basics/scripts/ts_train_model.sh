@@ -1,5 +1,5 @@
 base_bsz=128
-bsz=32
+bsz=64
 lr=0.0005
 total_iters=10000
 
